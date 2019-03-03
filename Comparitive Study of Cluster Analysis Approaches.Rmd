@@ -140,11 +140,91 @@ summary(seg.df.num)
 ```
 
 ```{r}
-
-
+set.seed(9632)
+seg.k <- kmeans(seg.df.num, centers=4)
+boxplot(seg.df.num$income ~ seg.k$cluster, ylab="Income", xlab="Cluster")
 
 ```
 
 ```{r}
+library(cluster)
 
+clusplot(seg.df, seg.k$cluster, color=TRUE, shade=TRUE,labels=4, lines=0, main="K-means cluster plot")
+```
+
+## Model-Based Clustering: Mclust()
+
+The key idea for model-based clustering is that observations come from groups
+with different statistical distributions (such as different means and variances).
+
+Such models are also known as "mixture models" because it is assumed that the
+data reflect a mixture of observations drawn from different populations, although we
+don't know which population each observation was drawn from.
+
+As you might guess, because mclust models data with normal distributions, it uses
+only numeric data.
+
+```{r}
+library(mclust)
+seg.mc <- Mclust(seg.df.num)
+summary(seg.mc)
+```
+
+This tells us that the data are estimated to have three clusters (components) with
+the sizes as shown in the table. Mclust() compared a variety of different mixture
+shapes and concluded that an ellipsoidal model (modeling the data as multivariate
+ellipses) fit best.
+
+Now, We try a 4-cluster solution by telling Mclust() the number of clusters we want with
+the G=4 argument:
+
+```{r}
+seg.mc4 <- Mclust(seg.df.num, G=4)
+summary(seg.mc4)
+```
+
+We compare the 3-cluster and 4-cluster models using the Bayesian information criterion
+(BIC) [129] with BIC(model1, model2):
+
+```{r}
+BIC(seg.mc, seg.mc4)
+```
+
+The difference between the models is 181. The key point to interpreting BIC is to
+remember this: the lower the value of BIC, on an infinite number line, the better. BIC
+of ???1,000 is better than BIC of ???990; and BIC of 60 is better than BIC of 90.
+There is one important note when interpreting BIC in R: unfortunately, some functions
+return the negative of BIC, which would then have to be interpreted in the opposite
+direction.We see above that BIC() reports positive values while Mclust()
+returns the same values in the negative direction. If you are ever unsure of the direction
+to interpret, use the BIC() function and interpret as noted (lower values are
+better). Alternatively, you could also check the log-likelihood values, where higher
+log-likelihood values are better (e.g., ???1,000 is better than ???1,100).
+
+```{r}
+seg.summ(seg.df, seg.mc$class)
+clusplot(seg.df, seg.mc$class, color=TRUE, shade=TRUE, labels=4, lines=0, main="Model-based cluster plot")
+```
+
+## poLCA
+
+Latent class analysis (LCA) is similar to mixture modeling in the assumption that
+differences are attributable to unobserved groups that one wishes to uncover.
+
+Whereas mclust and kmeans() work with numeric data, and hclust() depends
+on the distance measure, poLCA uses only categorical variables.
+
+There are several approaches to convert numeric data to factors, but for purposes
+here we simply recode everything as binary with regard to a specified cutting point
+(for instance, to recode as 1 for income below some cutoff and 2 above that). In the
+present case, we split each variable at the median() and recode using ifelse()
+and factor() (we'll see a more general approach to recoding numeric values with
+cut()
+
+```{r}
+seg.df.cut <- seg.df
+seg.df.cut$age <- factor(ifelse(seg.df$age < median(seg.df$age), 1, 2))
+seg.df.cut$income <- factor(ifelse(seg.df$income < median(seg.df$income),1, 2))
+seg.df.cut$kids <- factor(ifelse(seg.df$kids < median(seg.df$kids), 1, 2))
+summary(seg.df.cut)
 ```
